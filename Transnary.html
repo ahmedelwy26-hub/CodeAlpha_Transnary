@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transnary — Language Translation Tool</title>
+<style>
+:root{
+  --ink:#14141f;--panel:#1d1d2e;--panel-light:#262639;--border:#34344a;
+  --paper:#f2efe6;--paper-dim:#b9b6ae;--amber:#e3a640;--amber-dim:#a8823f;
+  --sage:#7fae8e;--danger:#d97757;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--ink);color:var(--paper);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+body{padding:40px 20px 70px;display:flex;justify-content:center}
+button,input,textarea,select{font:inherit}
+.app{width:100%;max-width:980px}
+header{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--border);padding-bottom:18px;margin-bottom:26px}
+.wordmark{font-family:Georgia,serif;font-size:34px;font-weight:600}.wordmark span{color:var(--amber)}
+.tagline{font-size:11px;color:var(--paper-dim);max-width:300px;text-align:right;line-height:1.5}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:20px 22px;margin-bottom:18px}
+.globe-row{display:grid;grid-template-columns:1fr 52px 1fr;gap:14px;align-items:center;margin-bottom:28px}
+.globe-panel{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:15px;text-align:center}
+.globe-heading{font-size:11px;color:var(--paper-dim);margin-bottom:8px}
+.globe-stage{position:relative;width:100%;aspect-ratio:1;max-width:340px;margin:auto;max-height:0;overflow:visible;opacity:0;transform:scale(.92);pointer-events:none;transition:max-height .35s ease,opacity .25s ease,transform .35s ease}
+.globe-stage.open{max-height:340px;opacity:1;transform:scale(1);pointer-events:auto}
+.globe-stage canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+.globe-label{
+  position:absolute;left:0;top:0;
+  bottom:anchor(top);
+  left:anchor(center);
+  translate:-50% -6px;
+  padding:5px 8px;background:var(--ink);border:1px solid var(--amber-dim);
+  border-radius:4px;pointer-events:none;opacity:0;transition:opacity .15s;white-space:nowrap;z-index:3
+}
+.globe-label .name{display:block;font-size:11px;font-weight:700;color:var(--amber)}
+.globe-label .native{display:block;font-family:Georgia,serif;font-size:11px;color:var(--paper-dim)}
+.globe-current{margin-top:9px;font-family:Georgia,serif;font-size:18px;cursor:pointer;user-select:none;display:inline-block;padding:3px 7px;border-radius:4px;transition:background .15s,color .15s}.globe-current:hover{background:var(--panel-light);color:var(--amber)}.globe-current small{display:block;font-family:inherit;font-size:10px;color:var(--paper-dim);margin-top:2px}
+.globe-hint{font-size:10px;color:var(--paper-dim);margin-top:7px}
+.swap{width:44px;height:44px;border-radius:50%;border:1px solid var(--border);background:var(--panel);color:var(--amber);cursor:pointer;font-size:18px;justify-self:center}
+.swap:hover{border-color:var(--amber);transform:rotate(180deg);transition:.18s}
+.panes{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.pane{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:15px;min-height:220px;display:flex;flex-direction:column}
+textarea{background:transparent;border:0;outline:0;resize:none;color:var(--paper);font-family:Georgia,serif;font-size:19px;line-height:1.5;flex:1;width:100%}
+textarea::placeholder{color:var(--paper-dim);font-family:inherit;font-size:13px}
+.pane-foot{display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:10px;padding-top:10px;font-size:10px;color:var(--paper-dim)}
+.icon-btn,.ghost-btn{background:var(--panel-light);border:1px solid var(--border);color:var(--paper);border-radius:4px;cursor:pointer;padding:9px 13px;font-size:11px}
+.icon-btn:hover,.ghost-btn:hover{border-color:var(--amber);color:var(--amber)}
+.translate-bar{text-align:center;margin:20px 0 34px}
+.translate-btn{background:var(--amber);color:var(--ink);border:0;padding:13px 34px;font-weight:700;border-radius:4px;cursor:pointer}
+.translate-btn:disabled{opacity:.55;cursor:wait}
+.status-line{text-align:center;font-size:11px;color:var(--paper-dim);min-height:18px;margin-top:-22px;margin-bottom:24px}
+.status-line.error{color:var(--danger)}
+label{display:block;font-size:10px;color:var(--paper-dim);margin-bottom:7px}
+select{width:100%;background:var(--panel-light);color:var(--paper);border:1px solid var(--border);padding:10px 12px;border-radius:4px}
+.voice-select{max-width:240px;min-width:150px;padding:9px 10px;font-size:11px}
+@media(max-width:700px){.voice-select{max-width:100%;min-width:0;flex:1}}
+
+.card-title{font-family:Georgia,serif;font-size:20px;margin:0 0 4px}.card-sub{font-size:10px;color:var(--paper-dim);line-height:1.6;margin:0 0 14px}
+.synonym-list{display:flex;flex-wrap:wrap;gap:7px}.chip{border:1px solid var(--border);padding:5px 10px;border-radius:20px;font-size:12px}
+.sense-block{border-top:1px solid var(--border);padding-top:13px;margin-top:13px}.pos{font-family:Georgia,serif;font-style:italic;color:var(--amber);font-size:14px;margin-bottom:7px}
+.definition{font-size:13px;line-height:1.55;margin:0 0 5px}.example{font-size:12px;color:var(--paper-dim);line-height:1.55;font-style:italic;border-left:2px solid var(--border);padding-left:10px;margin:0 0 3px}
+.empty-note{font-size:12px;color:var(--paper-dim)}
+footer{text-align:center;font-size:10px;color:var(--paper-dim);margin-top:30px;line-height:1.6}
+@media(max-width:700px){
+  .globe-row{grid-template-columns:1fr}.swap{transform:rotate(90deg);margin:auto}.swap:hover{transform:rotate(270deg)}
+  .panes{grid-template-columns:1fr}.tagline{display:none}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<header>
+  <div class="wordmark">Trans<span>nary</span></div>
+  <div class="tagline">Spin the globe to choose a language, then translate with Google Translate.</div>
+</header>
+
+<div class="globe-row">
+  <section class="globe-panel">
+    <div class="globe-heading">Translate from</div>
+    <div class="globe-stage" id="sourceStage">
+      <canvas id="sourceGlobe"></canvas>
+      <div class="globe-label" id="sourceLabel">
+        <span class="name"></span><span class="native"></span>
+      </div>
+    </div>
+    <div class="globe-current" id="sourceCurrent"></div>
+    <div class="globe-hint">Drag to spin · click a marker to pick</div>
+  </section>
+
+  <button class="swap" id="swapBtn" title="Swap languages" aria-label="Swap languages">⇄</button>
+
+  <section class="globe-panel">
+    <div class="globe-heading">Translate to</div>
+    <div class="globe-stage" id="targetStage">
+      <canvas id="targetGlobe"></canvas>
+      <div class="globe-label" id="targetLabel">
+        <span class="name"></span><span class="native"></span>
+      </div>
+    </div>
+    <div class="globe-current" id="targetCurrent"></div>
+    <div class="globe-hint">Drag to spin · click a marker to pick</div>
+  </section>
+</div>
+
+<div class="panes">
+  <div class="pane">
+    <textarea id="sourceText" placeholder="Type or paste text here..." maxlength="800"></textarea>
+    <div class="pane-foot">
+      <span id="charCount">0 / 800</span>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        <button class="icon-btn" id="clearBtn">Clear</button>
+      </div>
+    </div>
+  </div>
+  <div class="pane">
+    <textarea id="targetText" placeholder="Translation will appear here..." readonly></textarea>
+    <div class="pane-foot">
+      <span id="detectedNote">&nbsp;</span>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        <button class="icon-btn" id="copyBtn" disabled>Copy</button>
+        <select class="voice-select" id="voiceSelect" disabled title="Choose a voice for speech" aria-label="Choose a voice">
+          <option value="">Default voice</option>
+        </select>
+        <button class="icon-btn" id="speakBtn" disabled title="Read translation aloud">▶ Speak</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="translate-bar">
+  <button class="translate-btn" id="translateBtn">Translate</button>
+</div>
+<div class="status-line" id="statusLine">&nbsp;</div>
+
+<footer>Google public translation endpoint · Browser text-to-speech · Cobe geographic globe</footer>
+</div>
+
+<script type="module">
+import createGlobe from "https://esm.unpkg.com/cobe@2.0.1";
+
+// Public translation endpoint — no personal API key required.
+const TRANSLATION_API_URL = "https://translate.googleapis.com/translate_a/single";
+
+const LANGUAGES = [
+  {code:"en",name:"English",nativeName:"English",location:[51.5074,-0.1278]},
+  {code:"es",name:"Spanish",nativeName:"Español",location:[40.4168,-3.7038]},
+  {code:"fr",name:"French",nativeName:"Français",location:[48.8566,2.3522]},
+  {code:"de",name:"German",nativeName:"Deutsch",location:[52.52,13.405]},
+  {code:"it",name:"Italian",nativeName:"Italiano",location:[41.9028,12.4964]},
+  {code:"pt",name:"Portuguese",nativeName:"Português",location:[38.7223,-9.1393]},
+  {code:"nl",name:"Dutch",nativeName:"Nederlands",location:[52.3676,4.9041]},
+  {code:"ru",name:"Russian",nativeName:"Русский",location:[55.7558,37.6173]},
+  {code:"zh",name:"Chinese",nativeName:"中文",location:[39.9042,116.4074]},
+  {code:"ja",name:"Japanese",nativeName:"日本語",location:[35.6762,139.6503]},
+  {code:"ko",name:"Korean",nativeName:"한국어",location:[37.5665,126.978]},
+  {code:"ar",name:"Arabic",nativeName:"العربية",location:[24.7136,46.6753]},
+  {code:"hi",name:"Hindi",nativeName:"हिन्दी",location:[28.6139,77.209]},
+  {code:"ur",name:"Urdu",nativeName:"اردو",location:[33.6844,73.0479]},
+  {code:"tr",name:"Turkish",nativeName:"Türkçe",location:[39.9334,32.8597]},
+  {code:"pl",name:"Polish",nativeName:"Polski",location:[52.2297,21.0122]},
+  {code:"sv",name:"Swedish",nativeName:"Svenska",location:[59.3293,18.0686]},
+  {code:"el",name:"Greek",nativeName:"Ελληνικά",location:[37.9838,23.7275]},
+  {code:"he",name:"Hebrew",nativeName:"עברית",location:[31.7683,35.2137]},
+  {code:"vi",name:"Vietnamese",nativeName:"Tiếng Việt",location:[21.0285,105.8542]},
+  {code:"th",name:"Thai",nativeName:"ไทย",location:[13.7563,100.5018]},
+  {code:"id",name:"Indonesian",nativeName:"Bahasa Indonesia",location:[-6.2088,106.8456]},
+  {code:"bn",name:"Bengali",nativeName:"বাংলা",location:[23.8103,90.4125]},
+  {code:"fa",name:"Persian",nativeName:"فارسی",location:[35.6892,51.389]},
+  {code:"uk",name:"Ukrainian",nativeName:"Українська",location:[50.4501,30.5234]}
+];
+const LANG_BY_CODE = Object.fromEntries(LANGUAGES.map(x=>[x.code,x]));
+
+let currentSource = "en";
+let currentTarget = "fr";
+
+const sourceStage = document.getElementById("sourceStage");
+const targetStage = document.getElementById("targetStage");
+const sourceLabel = document.getElementById("sourceLabel");
+const targetLabel = document.getElementById("targetLabel");
+const sourceCurrent = document.getElementById("sourceCurrent");
+const targetCurrent = document.getElementById("targetCurrent");
+const sourceText = document.getElementById("sourceText");
+const targetText = document.getElementById("targetText");
+const translateBtn = document.getElementById("translateBtn");
+const statusLine = document.getElementById("statusLine");
+const copyBtn = document.getElementById("copyBtn");
+const voiceSelect = document.getElementById("voiceSelect");
+const speakBtn = document.getElementById("speakBtn");
+const detectedNote = document.getElementById("detectedNote");
+const charCount = document.getElementById("charCount");
+
+function displayLanguage(code, el){
+  const l = LANG_BY_CODE[code];
+  el.innerHTML = `${escapeHtml(l.name)}<small>${escapeHtml(l.nativeName)}</small>`;
+}
+
+function setStatus(message="", error=false){
+  statusLine.textContent = message || "\u00A0";
+  statusLine.classList.toggle("error", error);
+}
+
+function escapeHtml(value){
+  return String(value)
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+
+displayLanguage(currentSource, sourceCurrent);
+displayLanguage(currentTarget, targetCurrent);
+
+function createLanguageGlobe(canvas, stage, label, selectedCode, onSelect, initialPhi){
+  let globe=null, frame=0, phi=initialPhi, theta=0.18;
+  let dragging=false, last=null, moved=false, visible=false, hoverCode=null;
+
+  // Exact COBE v2 constants/conventions. These MUST match COBE's marker renderer.
+  const GLOBE_R=0.8;
+  const MARKER_ELEVATION=0.035;
+  const SCALE=0.97;
+
+  const markers=LANGUAGES.map(l=>({
+    location:l.location,
+    size:l.code===selectedCode?0.035:0.022,
+    id:l.code
+  }));
+
+  function latLonTo3D([lat,lon]){
+    const latRad=lat*Math.PI/180;
+    const lonRad=lon*Math.PI/180-Math.PI;
+    const c=Math.cos(latRad);
+    return [-c*Math.cos(lonRad),Math.sin(latRad),c*Math.sin(lonRad)];
+  }
+
+  function projectLanguage(lang){
+    const p=latLonTo3D(lang.location);
+    const r=GLOBE_R+MARKER_ELEVATION;
+    const x=p[0]*r,y=p[1]*r,z=p[2]*r;
+    const cx=Math.cos(theta),cy=Math.cos(phi),sx=Math.sin(theta),sy=Math.sin(phi);
+
+    const rx=cy*x+sy*z;
+    const ry=sy*sx*x+cx*y-cy*sx*z;
+    const rz=-sy*cx*x+sx*y+cy*cx*z;
+
+    const rect=canvas.getBoundingClientRect();
+    const aspect=canvas.width/Math.max(1,canvas.height);
+    const px=((rx/aspect)*SCALE+1)/2;
+    const py=(-ry*SCALE+1)/2;
+
+    return {
+      x:px*rect.width,
+      y:py*rect.height,
+      depth:rz,
+      visible:rz>=0 || (rx*rx+ry*ry>=0.64)
+    };
+  }
+
+  function hideLabel(){
+    hoverCode=null;
+    label.style.opacity='0';
+  }
+
+  function showLabel(lang){
+    if(!visible||!lang){hideLabel();return;}
+    const pos=projectLanguage(lang);
+    if(!pos.visible){hideLabel();return;}
+
+    hoverCode=lang.code;
+    label.querySelector('.name').textContent=lang.name;
+    label.querySelector('.native').textContent=lang.nativeName;
+
+    // Use the marker anchor that COBE itself creates: exact marker = exact label position.
+    label.style.positionAnchor=`--cobe-${lang.code}`;
+    label.style.left='';
+    label.style.top='';
+    label.style.transform='';
+    label.style.opacity='1';
+  }
+
+  function hitTest(clientX,clientY){
+    const rect=canvas.getBoundingClientRect();
+    const mx=clientX-rect.left,my=clientY-rect.top;
+    let best=null,bestDistance=24;
+
+    for(const lang of LANGUAGES){
+      const pos=projectLanguage(lang);
+      if(!pos.visible)continue;
+      const d=Math.hypot(pos.x-mx,pos.y-my);
+      if(d<bestDistance){bestDistance=d;best=lang;}
+    }
+    return best;
+  }
+
+  function init(){
+    const rect=stage.getBoundingClientRect();
+    if(rect.width<20||rect.height<20){requestAnimationFrame(init);return;}
+    const dpr=Math.min(window.devicePixelRatio||1,2);
+    const size=Math.max(1,Math.floor(Math.min(rect.width,rect.height)*dpr));
+    canvas.width=size;canvas.height=size;
+
+    globe=createGlobe(canvas,{devicePixelRatio:dpr,width:size,height:size,phi,theta,dark:0,diffuse:1.15,scale:SCALE,mapSamples:32000,mapBrightness:7.2,baseColor:[0.25,0.28,0.33],markerColor:[0.89,0.65,0.25],markerElevation:MARKER_ELEVATION,glowColor:[0.76,0.79,0.86],markers,arcs:[]});
+
+    function tick(){
+      if(!globe)return;
+      if(visible&&!dragging)phi+=0.0025;
+      if(visible){
+        globe.update({phi,theta});
+        if(hoverCode){
+          const lang=LANG_BY_CODE[hoverCode];
+          if(lang){const p=projectLanguage(lang);if(p.visible)showLabel(lang);else hideLabel();}
+        }
+      }
+      frame=requestAnimationFrame(tick);
+    }
+    tick();
+  }
+
+  function setVisible(next){
+    visible=next;
+    stage.classList.toggle('open',next);
+    if(!next){hideLabel();canvas.style.cursor='default';return;}
+    canvas.style.cursor='grab';
+    if(!globe)init();
+  }
+
+  canvas.addEventListener('pointerdown',e=>{
+    if(!visible)return;
+    dragging=true;moved=false;last={x:e.clientX,y:e.clientY};
+    canvas.setPointerCapture?.(e.pointerId);canvas.style.cursor='grabbing';hideLabel();
+  });
+
+  canvas.addEventListener('pointermove',e=>{
+    if(!visible)return;
+    if(dragging&&last){
+      const dx=e.clientX-last.x,dy=e.clientY-last.y;
+      if(Math.abs(dx)+Math.abs(dy)>3)moved=true;
+      phi+=dx*0.006;
+      theta=Math.max(-0.9,Math.min(0.9,theta+dy*0.004));
+      last={x:e.clientX,y:e.clientY};
+      hideLabel();
+      return;
+    }
+    const hit=hitTest(e.clientX,e.clientY);
+    if(hit){showLabel(hit);canvas.style.cursor='pointer';}
+    else{hideLabel();canvas.style.cursor='grab';}
+  });
+
+  canvas.addEventListener('pointerup',e=>{
+    if(!visible)return;
+    if(!moved){
+      const hit=hitTest(e.clientX,e.clientY);
+      if(hit){hideLabel();onSelect(hit);setVisible(false);}
+    }
+    dragging=false;last=null;canvas.releasePointerCapture?.(e.pointerId);canvas.style.cursor='grab';
+  });
+
+  canvas.addEventListener('pointercancel',()=>{dragging=false;last=null;hideLabel();canvas.style.cursor='grab';});
+  canvas.addEventListener('pointerleave',()=>{if(!dragging){hideLabel();canvas.style.cursor='grab';}});
+
+  const ro=new ResizeObserver(()=>{
+    if(!globe||!visible)return;
+    const rect=stage.getBoundingClientRect();
+    const dpr=Math.min(window.devicePixelRatio||1,2);
+    const size=Math.max(1,Math.floor(Math.min(rect.width,rect.height)*dpr));
+    canvas.width=size;canvas.height=size;
+    globe.update({width:size,height:size,phi,theta});
+  });
+  ro.observe(stage);
+
+  setVisible(false);
+  return {open(){setVisible(true)},close(){setVisible(false)},select(code){selectedCode=code},destroy(){cancelAnimationFrame(frame);ro.disconnect();globe?.destroy();globe=null;}};
+}
+
+let sourceGlobe;
+let targetGlobe;
+
+sourceGlobe = createLanguageGlobe(
+  document.getElementById("sourceGlobe"),
+  sourceStage,
+  sourceLabel,
+  currentSource,
+  lang=>{
+    currentSource=lang.code;
+    displayLanguage(currentSource,sourceCurrent);
+    
+  },
+  0.55
+);
+
+targetGlobe = createLanguageGlobe(
+  document.getElementById("targetGlobe"),
+  targetStage,
+  targetLabel,
+  currentTarget,
+  lang=>{
+    currentTarget=lang.code;
+    displayLanguage(currentTarget,targetCurrent);
+  },
+  -1.1
+);
+
+sourceCurrent.addEventListener("click",()=>sourceGlobe.open());
+targetCurrent.addEventListener("click",()=>targetGlobe.open());
+
+document.getElementById("swapBtn").addEventListener("click",()=>{
+  [currentSource,currentTarget]=[currentTarget,currentSource];
+  displayLanguage(currentSource,sourceCurrent);
+  displayLanguage(currentTarget,targetCurrent);
+  sourceGlobe.close();
+  targetGlobe.close();
+  if(targetText.value){
+    sourceText.value=targetText.value;
+    targetText.value="";
+    updateCharCount();
+    copyBtn.disabled=true;
+    speakBtn.disabled=true;
+    voiceSelect.disabled=true;
+    detectedNote.innerHTML="&nbsp;";
+    
+  }
+});
+
+sourceText.addEventListener("input",()=>{
+  updateCharCount();
+});
+
+document.getElementById("clearBtn").addEventListener("click",()=>{
+  sourceText.value="";
+  targetText.value="";
+  updateCharCount();
+  copyBtn.disabled=true;
+  detectedNote.innerHTML="&nbsp;";
+  setStatus("");
+  
+});
+
+function updateCharCount(){
+  charCount.textContent=`${sourceText.value.length} / 800`;
+}
+
+async function translateWithGoogle(text, sourceCode, targetCode){
+  // Google’s public web translation endpoint. No API key is required.
+  // Keep the exact source and target language codes to avoid incorrect language inference.
+  const params = new URLSearchParams({
+    client: "gtx",
+    sl: sourceCode,
+    tl: targetCode,
+    dt: "t",
+    ie: "UTF-8",
+    oe: "UTF-8",
+    q: text
+  });
+
+  const res = await fetch(`${TRANSLATION_API_URL}?${params.toString()}`, {
+    method: "GET",
+    headers: { "Accept": "application/json,text/plain,*/*" },
+    cache: "no-store"
+  });
+
+  if(!res.ok){
+    throw new Error(`Google Translate returned HTTP ${res.status}.`);
+  }
+
+  const data = await res.json();
+  if(!Array.isArray(data) || !Array.isArray(data[0])){
+    throw new Error("Google Translate returned an unexpected response.");
+  }
+
+  // Each [translatedText, originalText, ...] segment is joined in order.
+  const translated = data[0]
+    .filter(segment => Array.isArray(segment) && typeof segment[0] === "string")
+    .map(segment => segment[0])
+    .join("");
+
+  if(!translated.trim()){
+    throw new Error("Google Translate returned an empty response.");
+  }
+
+  return translated;
+}
+
+translateBtn.addEventListener("click",async()=>{
+  const text=sourceText.value.trim();
+  if(!text){setStatus("Enter some text to translate.",true);return;}
+
+  const sourceLang=LANG_BY_CODE[currentSource];
+  const targetLang=LANG_BY_CODE[currentTarget];
+
+  if(currentSource===currentTarget){
+    targetText.value=text;
+    copyBtn.disabled=false;
+    updateSpeakAvailability();
+    detectedNote.textContent=`${currentSource.toUpperCase()} → ${currentTarget.toUpperCase()}`;
+    setStatus("Source and target languages are the same.");
+    
+    return;
+  }
+
+  translateBtn.disabled=true;
+  copyBtn.disabled=true;
+  speakBtn.disabled=true;
+  voiceSelect.disabled=true;
+  targetText.value="";
+  setStatus("Translating with Google Translate...");
+
+  try{
+    targetText.value=await translateWithGoogle(text,currentSource,currentTarget);
+    copyBtn.disabled=false;
+    updateSpeakAvailability();
+    detectedNote.textContent=`${sourceLang.code.toUpperCase()} → ${targetLang.code.toUpperCase()}`;
+    setStatus("");
+    
+  }catch(err){
+    console.error(err);
+    setStatus(`Translation failed — ${err.message}`,true);
+  }finally{
+    translateBtn.disabled=false;
+  }
+});
+
+sourceText.addEventListener("keydown",e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==="Enter") translateBtn.click();
+});
+
+copyBtn.addEventListener("click",async()=>{
+  try{
+    if(navigator.clipboard && window.isSecureContext){
+      await navigator.clipboard.writeText(targetText.value);
+    }else{
+      targetText.removeAttribute("readonly");
+      targetText.select();
+      document.execCommand("copy");
+      targetText.setAttribute("readonly","");
+      window.getSelection()?.removeAllRanges();
+    }
+    const old=copyBtn.textContent;
+    copyBtn.textContent="Copied";
+    setTimeout(()=>copyBtn.textContent=old,1200);
+  }catch{
+    setStatus("Could not copy to clipboard.",true);
+  }
+});
+
+
+function getSpeechVoices(){
+  return ("speechSynthesis" in window) ? window.speechSynthesis.getVoices() : [];
+}
+
+function populateVoiceSelect(){
+  if(!("speechSynthesis" in window)) return;
+
+  const previous = voiceSelect.value;
+  const targetPrefix = currentTarget.toLowerCase().split("-")[0];
+
+  const voices = getSpeechVoices()
+    .slice()
+    .sort((a,b)=>{
+      const aMatch=(a.lang||"").toLowerCase().startsWith(targetPrefix);
+      const bMatch=(b.lang||"").toLowerCase().startsWith(targetPrefix);
+      if(aMatch !== bMatch) return aMatch ? -1 : 1;
+      return (a.name||"").localeCompare(b.name||"");
+    });
+
+  voiceSelect.innerHTML = "";
+  const defaultOption = document.createElement("option");
+  defaultOption.value = "";
+  defaultOption.textContent = "Default voice";
+  voiceSelect.appendChild(defaultOption);
+
+  voices.forEach((voice,index)=>{
+    const option=document.createElement("option");
+    option.value=String(index);
+    option.textContent=`${voice.name} — ${voice.lang}${voice.localService ? "" : " · online"}`;
+    option.dataset.voiceName=voice.name;
+    option.dataset.voiceLang=voice.lang;
+    voiceSelect.appendChild(option);
+  });
+
+  if(previous && [...voiceSelect.options].some(o=>o.value===previous)){
+    voiceSelect.value=previous;
+  }else{
+    const preferredIndex = voices.findIndex(v =>
+      (v.lang||"").toLowerCase().startsWith(targetPrefix)
+    );
+    voiceSelect.value = preferredIndex >= 0 ? String(preferredIndex) : "";
+  }
+
+  voiceSelect.disabled = voices.length === 0;
+}
+
+function updateSpeakAvailability(){
+  const supported = "speechSynthesis" in window;
+  speakBtn.disabled = !supported || !targetText.value.trim();
+  voiceSelect.disabled = !supported || getSpeechVoices().length === 0;
+}
+
+speakBtn.addEventListener("click",()=>{
+  if(!targetText.value || !("speechSynthesis" in window)) return;
+
+  // Keep the button label permanently as "▶ Speak".
+  // Clicking while speaking stops the current utterance without changing the label.
+  if(window.speechSynthesis.speaking || window.speechSynthesis.pending){
+    window.speechSynthesis.cancel();
+    return;
+  }
+
+  const utterance=new SpeechSynthesisUtterance(targetText.value);
+  utterance.lang=currentTarget;
+  utterance.rate=0.95;
+  utterance.pitch=1;
+  utterance.volume=1;
+
+  const voices=getSpeechVoices();
+  const selectedIndex=voiceSelect.value;
+  const selectedVoice=selectedIndex !== "" ? voices.find((_,i)=>String(i)===selectedIndex) : null;
+  const prefix=currentTarget.toLowerCase().split("-")[0];
+  const preferred=voices.find(v => (v.lang||"").toLowerCase().startsWith(prefix));
+
+  if(selectedVoice){
+    utterance.voice=selectedVoice;
+    utterance.lang=selectedVoice.lang || currentTarget;
+  }else if(preferred){
+    utterance.voice=preferred;
+    utterance.lang=preferred.lang || currentTarget;
+  }
+
+  window.speechSynthesis.speak(utterance);
+});
+
+voiceSelect.addEventListener("change",()=>{
+  if(window.speechSynthesis?.speaking || window.speechSynthesis?.pending){
+    window.speechSynthesis.cancel();
+  }
+});
+
+window.speechSynthesis?.addEventListener("voiceschanged",()=>{
+  populateVoiceSelect();
+  updateSpeakAvailability();
+});
+
+populateVoiceSelect();
+updateSpeakAvailability();
+updateCharCount();
+</script>
+</body>
+</html>
