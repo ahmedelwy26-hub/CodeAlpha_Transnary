@@ -115,6 +115,10 @@ This project satisfies the assigned requirements:
 | Text-to-speech          | Included                          |
 | Voice selection         | Included                          |
 
+<img width="45%" height="768" alt="15 09 2026_01 06 13_REC" src="https://github.com/user-attachments/assets/c00a3087-1692-4f09-a9b3-0122da4865d0" />
+<img width="45%" height="768" alt="15 09 2026_00 41 27_REC" src="https://github.com/user-attachments/assets/a00d872a-5e3f-4f20-97d4-6e08bd6c451b" />
+
+
 ## Project Author
 
 **Ahmad Emad**
