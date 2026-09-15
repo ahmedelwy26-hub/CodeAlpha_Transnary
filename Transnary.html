@@ -305,7 +305,7 @@ function createLanguageGlobe(canvas, stage, label, selectedCode, onSelect, initi
 
     function tick(){
       if(!globe)return;
-      if(visible&&!dragging)phi+=0.0025;
+      // No automatic rotation: the globe moves only when the user drags it.
       if(visible){
         globe.update({phi,theta});
         if(hoverCode){
@@ -385,8 +385,18 @@ sourceGlobe = createLanguageGlobe(
   lang=>{
     currentSource=lang.code;
     displayLanguage(currentSource,sourceCurrent);
-    
+
+    // Clear input and translation whenever the source language is changed.
+    sourceText.value="";
+    targetText.value="";
+    updateCharCount();
+    copyBtn.disabled=true;
+    speakBtn.disabled=true;
+    voiceSelect.disabled=true;
+    detectedNote.innerHTML="&nbsp;";
+    setStatus("");
   },
+
   0.55
 );
 
